@@ -37,16 +37,18 @@ function SidebarContent({ onCloseMobileMenu }: SidebarContentProps) {
   const modeParam = searchParams.get("mode");
 
   const isSuperAdmin = user?.role === "Superadmin";
+  const isAreaAdmin = user?.role === "Area Administrator";
   const isDataEnumerator = user?.role === "Data Enumerator";
   const isFieldCoordinator = user?.role === "Field Coordinator";
+  const isEcFocalPoint = user?.role === "EC Focal Point";
   const ac = user?.access_control || [];
   const normalizedAc = ac.map((item: string) => item.toLowerCase().replace(/_/g, "-"));
 
   const showMeetingMinutes = isSuperAdmin || normalizedAc.includes("meeting-minutes");
   const showSops = isSuperAdmin || normalizedAc.includes("sops");
-  const showTools = isSuperAdmin || isDataEnumerator || isFieldCoordinator;
+  const showTools = isSuperAdmin || isAreaAdmin || isDataEnumerator || isFieldCoordinator || isEcFocalPoint;
   const showSituationalReports = isSuperAdmin || normalizedAc.includes("situational-reports");
-  const showUserManagement = isSuperAdmin;
+  const showUserManagement = isSuperAdmin || isAreaAdmin;
 
   const handleLogout = () => {
     logout();
@@ -361,10 +363,17 @@ export function AssessmentLayout({ children }: { children: React.ReactNode }) {
       return normalized.includes("situational-reports");
     }
     if (pathname?.startsWith("/assement/users")) {
-      return false;
+      const r = roleLower?.replace(/[\s-]+/g, "_");
+      return r === "superadmin" || r === "area_administrator" || r === "area_admin";
     }
     if (pathname?.startsWith("/assement/tools")) {
-      return roleLower === "data enumerator" || roleLower === "field coordinator";
+      const r = roleLower?.replace(/[\s-]+/g, "_");
+      return (
+        r === "data_enumerator" ||
+        r === "field_coordinator" ||
+        r === "ec_focal_point" ||
+        r === "area_administrator"
+      );
     }
     // Guard for specific assessment slug details pages
     if (pathname?.startsWith("/assement/")) {

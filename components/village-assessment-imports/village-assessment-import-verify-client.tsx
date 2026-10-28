@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { siteConfig } from "@/config/site";
 import LoginCard from "@/components/auth/login-card";
+import { getRolePermissions } from "@/lib/permissions";
 import Link from "next/link";
 
 interface Props {
@@ -34,8 +35,11 @@ export default function VillageAssessmentImportVerifyClient({ id }: Props) {
   const [commentText, setCommentText] = useState("");
 
   // Permissions
-  const isSuperAdmin = user?.role === "Superadmin";
-  const canVerify = isSuperAdmin;
+  const perms = getRolePermissions(user?.role);
+  const isSuperAdmin = perms.isSuperAdmin;
+  const isAreaAdmin = perms.isAreaAdmin;
+  const isViewer = perms.isViewer;
+  const canVerify = perms.canVerify;
 
   // Fetch single import details
   const {

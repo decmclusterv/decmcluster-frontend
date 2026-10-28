@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { siteConfig } from "@/config/site";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { FileUpload } from "@/components/shared/file-upload";
+import { getRolePermissions } from "@/lib/permissions";
 import Link from "next/link";
 
 export default function SituationalReportsClient() {
@@ -66,12 +67,13 @@ export default function SituationalReportsClient() {
   const [selectedNewFile, setSelectedNewFile] = useState<File | null>(null);
 
   // Permission Flags
-  const isSuperAdmin = user?.role === "Superadmin";
-  const isViewer = user?.role === "Viewer";
-  const isDataEnumerator = user?.role === "Data Enumerator";
-  const isFieldCoordinator = user?.role === "Field Coordinator";
-  const canAdd = isSuperAdmin || isDataEnumerator || isFieldCoordinator;
-  const canDelete = isSuperAdmin;
+  const perms = getRolePermissions(user?.role);
+  const isSuperAdmin = perms.isSuperAdmin;
+  const isViewer = perms.isViewer;
+  const canAdd = perms.canUpload;
+  const canEdit = perms.canEdit;
+  const canVerify = perms.canVerify;
+  const canDelete = perms.canDelete;
 
   // Reset page when search changes
   useEffect(() => {
@@ -299,7 +301,7 @@ export default function SituationalReportsClient() {
                                 <Eye className="w-3.5 h-3.5" /> View
                               </Button>
                             )}
-                            {isSuperAdmin && (
+                            {canVerify && (
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -309,7 +311,7 @@ export default function SituationalReportsClient() {
                                 <Link href={`/situational-reports/verify/${item.id}`}>Review</Link>
                               </Button>
                             )}
-                            {canAdd && item.status === "returned" && (
+                            {canEdit && item.status === "returned" && (
                               <Button
                                 variant="outline"
                                 size="sm"

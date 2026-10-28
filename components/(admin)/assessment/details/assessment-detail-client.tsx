@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useAssessment, useDeleteAssessment } from "@/hooks/use-assessments";
 import { toast } from "sonner";
 import { DynamicDataTable } from "@/components/(admin)/assessment/dynamic-data-table";
+import { getRolePermissions } from "@/lib/permissions";
 
 interface AssessmentDetailClientProps {
   slug: string;
@@ -33,10 +34,9 @@ export default function AssessmentDetailClient({ slug }: AssessmentDetailClientP
   }, []);
 
   // Role permissions
-  const isSuperAdmin = user?.role === "Superadmin";
-  const isDataEnumerator = user?.role === "Data Enumerator";
-  const isFieldCoordinator = user?.role === "Field Coordinator";
-  const canAdd = isSuperAdmin || isDataEnumerator || isFieldCoordinator;
+  const perms = getRolePermissions(user?.role);
+  const isSuperAdmin = perms.isSuperAdmin;
+  const canAdd = perms.canUpload;
 
   const FORM_NAMES: Record<string, string> = {
     "displacement-data": "Displacement Data",

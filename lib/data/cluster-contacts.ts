@@ -19,7 +19,7 @@ export function formatDisplayName(contact: { name?: string | null; email?: strin
   );
 }
 
-export function getOrganizationBadgeClass(): string {
+export function getOrganizationBadgeClass(_org?: string): string {
   return "bg-muted/70 text-foreground border-border font-medium";
 }
 

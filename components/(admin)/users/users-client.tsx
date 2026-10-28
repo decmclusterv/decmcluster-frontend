@@ -32,6 +32,12 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { toast } from "sonner";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { useAssessments } from "@/hooks/use-assessments";
+import {
+  USER_ROLES,
+  ROLE_OPTIONS,
+  normalizeRoleKey,
+  getRolePermissions,
+} from "@/lib/permissions";
 
 const FALLBACK_ASSESSMENTS = [
   { id: "displacement-data", label: "Displacement Data" },
@@ -102,7 +108,7 @@ export default function UsersClient() {
     setEditFirstName(item.first_name || "");
     setEditLastName(item.last_name || "");
     setEditEmail(item.email || "");
-    setEditRole(item.role || "viewer");
+    setEditRole(normalizeRoleKey(item.role));
     setEditSelectedFolders(item.access_control || []);
   };
 
@@ -186,9 +192,14 @@ export default function UsersClient() {
   }, []);
 
   // Permission Flags
-  const isSuperAdmin = user?.role === "Superadmin";
+  const currentUserPerms = getRolePermissions(user?.role);
+  const isSuperAdmin = currentUserPerms.isSuperAdmin;
+  const isAreaAdmin = currentUserPerms.isAreaAdmin;
   const canAdd = isSuperAdmin;
+  const canEdit = isSuperAdmin || isAreaAdmin;
   const canDelete = isSuperAdmin;
+  const canResend = isSuperAdmin;
+  const canAction = canEdit || canDelete || canResend;
 
   // Reset page when search changes
   useEffect(() => {
@@ -317,13 +328,8 @@ export default function UsersClient() {
   };
 
   const mapRoleLabel = (r: string) => {
-    const roleMap: Record<string, string> = {
-      superadmin: "Superadmin",
-      viewer: "Viewer",
-      data_enumerator: "Data Enumerator",
-      field_coordinator: "Field Coordinator",
-    };
-    return roleMap[r] || r;
+    const key = normalizeRoleKey(r);
+    return USER_ROLES[key]?.label || r;
   };
 
   return (
@@ -394,10 +400,10 @@ export default function UsersClient() {
                 <thead>
                   <tr className="bg-muted/40 border-b border-border text-xs font-bold text-muted-foreground">
                     <th className="p-4 w-[20%]">Name</th>
-                    <th className="p-4 w-[25%]">Email</th>
-                    <th className="p-4 w-[13%]">Role</th>
-                    <th className="p-4 w-[27%]">Folder Access</th>
-                    {canDelete && <th className="p-4 w-[15%] text-right">Actions</th>}
+                    <th className="p-4 w-[22%]">Email</th>
+                    <th className="p-4 w-[18%]">Role & Permissions</th>
+                    <th className="p-4 w-[25%]">Folder Access</th>
+                    {canAction && <th className="p-4 w-[15%] text-right">Actions</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/60 text-xs">
@@ -475,15 +481,27 @@ export default function UsersClient() {
                           </div>
                         </td>
                         <td className="p-4">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-primary text-white border border-primary capitalize">
-                            {mapRoleLabel(item.role)}
-                          </span>
+                          {(() => {
+                            const perms = getRolePermissions(item.role);
+                            return (
+                              <div className="flex flex-col gap-1 items-start">
+                                <span
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${perms.badgeClass}`}
+                                >
+                                  {perms.roleLabel}
+                                </span>
+                                <span className="text-[10px] font-semibold text-muted-foreground/80">
+                                  {perms.capabilities}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="p-4">{renderAccessControlBadges(item)}</td>
-                        {canDelete && (
+                        {canAction && (
                           <td className="p-4 text-right">
                             <div className="inline-flex items-center justify-end gap-2">
-                              {!item.is_active && (
+                              {!item.is_active && canResend && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -500,16 +518,17 @@ export default function UsersClient() {
                                   Resend
                                 </Button>
                               )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-8 px-2.5 font-bold hover:bg-blue-50 dark:hover:bg-blue-950/20 border-border/80 cursor-pointer gap-1"
-                                onClick={() => handleEditClick(item)}
-                              >
-                                <Edit className="w-3.5 h-3.5" /> Edit
-                              </Button>
-                              {/* Prevent user from deleting themselves */}
-                              {user?.email !== item.email && (
+                              {canEdit && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8 px-2.5 font-bold hover:bg-blue-50 dark:hover:bg-blue-950/20 border-border/80 cursor-pointer gap-1"
+                                  onClick={() => handleEditClick(item)}
+                                >
+                                  <Edit className="w-3.5 h-3.5" /> Edit
+                                </Button>
+                              )}
+                              {canDelete && user?.email !== item.email && (
                                 <Button
                                   variant="outline"
                                   size="sm"
@@ -612,12 +631,33 @@ export default function UsersClient() {
                   onChange={(e) => handleRoleChange(e.target.value)}
                   className="w-full rounded-xl border border-input bg-background p-2.5 text-xs font-semibold focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none cursor-pointer"
                 >
-                  <option value="superadmin">Superadmin</option>
-                  <option value="viewer">Viewer</option>
-                  <option value="data_enumerator">Data Enumerator</option>
-                  <option value="field_coordinator">Field Coordinator</option>
+                  {ROLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              {/* Role capability info card */}
+              {(() => {
+                const currentRoleDef = USER_ROLES[normalizeRoleKey(role)];
+                return (
+                  <div className="rounded-xl border border-border/70 bg-muted/30 p-2.5 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground">{currentRoleDef.label}</span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${currentRoleDef.badgeClass}`}
+                      >
+                        {currentRoleDef.capabilities}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
+                      {currentRoleDef.description}
+                    </p>
+                  </div>
+                );
+              })()}
 
               {role !== "superadmin" && (
                 <div className="space-y-3 border-t border-border/60 pt-3 mt-1 max-h-[250px] overflow-y-auto pr-1">
@@ -858,12 +898,35 @@ export default function UsersClient() {
                   onChange={(e) => handleEditRoleChange(e.target.value)}
                   className="w-full rounded-xl border border-input bg-background p-2.5 text-xs font-semibold focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none cursor-pointer"
                 >
-                  <option value="superadmin">Superadmin</option>
-                  <option value="viewer">Viewer</option>
-                  <option value="data_enumerator">Data Enumerator</option>
-                  <option value="field_coordinator">Field Coordinator</option>
+                  {ROLE_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
                 </select>
               </div>
+
+              {/* Role capability info card */}
+              {(() => {
+                const currentEditRoleDef = USER_ROLES[normalizeRoleKey(editRole)];
+                return (
+                  <div className="rounded-xl border border-border/70 bg-muted/30 p-2.5 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground">
+                        {currentEditRoleDef.label}
+                      </span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${currentEditRoleDef.badgeClass}`}
+                      >
+                        {currentEditRoleDef.capabilities}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed font-medium">
+                      {currentEditRoleDef.description}
+                    </p>
+                  </div>
+                );
+              })()}
 
               {editRole !== "superadmin" && (
                 <div className="space-y-3 border-t border-border/60 pt-3 mt-1 max-h-[250px] overflow-y-auto pr-1">

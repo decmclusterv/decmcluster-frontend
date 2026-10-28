@@ -17,6 +17,7 @@ import {
 import { toast } from "sonner";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { siteConfig } from "@/config/site";
+import { getRolePermissions } from "@/lib/permissions";
 
 export function ToolsClient() {
   const { user, token } = useAuth();
@@ -70,10 +71,11 @@ export function ToolsClient() {
   }, []);
 
   // Role permissions
-  const isSuperAdmin = user?.role === "Superadmin";
-  const isDataEnumerator = user?.role === "Data Enumerator";
-  const isFieldCoordinator = user?.role === "Field Coordinator";
-  const canAdd = isSuperAdmin || isDataEnumerator || isFieldCoordinator;
+  const perms = getRolePermissions(user?.role);
+  const isSuperAdmin = perms.isSuperAdmin;
+  const canAdd = perms.canUpload;
+  const canEdit = perms.canEdit;
+  const canDelete = perms.canDelete;
 
   // Fetch assessments
   const { data: assessments = [], isLoading, error } = useAssessments();
@@ -307,17 +309,19 @@ export function ToolsClient() {
                             </Button>
                           )}
 
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50 cursor-pointer"
-                            onClick={() => handleEdit(a)}
-                            title="Edit Tool"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
+                          {canEdit && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50 cursor-pointer"
+                              onClick={() => handleEdit(a)}
+                              title="Edit Tool"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                          )}
 
-                          {canAdd && (
+                          {canDelete && (
                             <Button
                               variant="ghost"
                               size="icon"

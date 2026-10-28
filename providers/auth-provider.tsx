@@ -39,11 +39,13 @@ const decodeJwt = (token: string) => {
 
 const mapBackendRole = (role?: string): string => {
   if (!role) return "Viewer";
-  const r = role.toLowerCase();
+  const r = role.toLowerCase().trim().replace(/[\s-]+/g, "_");
   if (r === "superadmin") return "Superadmin";
-  if (r === "viewer") return "Viewer";
-  if (r === "data_enumerator") return "Data Enumerator";
+  if (r === "area_administrator" || r === "area_admin") return "Area Administrator";
+  if (r === "ec_focal_point") return "EC Focal Point";
   if (r === "field_coordinator") return "Field Coordinator";
+  if (r === "data_enumerator") return "Data Enumerator";
+  if (r === "viewer") return "Viewer";
   return role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, " ");
 };
 

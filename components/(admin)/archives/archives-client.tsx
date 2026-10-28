@@ -34,6 +34,7 @@ import { siteConfig } from "@/config/site";
 import { AlertDialog } from "@/components/ui/alert-dialog";
 import { FileUpload } from "@/components/shared/file-upload";
 import { ArchiveData } from "@/types/admin/archive";
+import { getRolePermissions } from "@/lib/permissions";
 
 export default function ArchivesClient() {
   const { user, token } = useAuth();
@@ -59,11 +60,12 @@ export default function ArchivesClient() {
   } | null>(null);
 
   // User permission check
-  const isSuperAdmin = user?.role === "Superadmin";
-  const isDataEnumerator = user?.role === "Data Enumerator";
-  const isFieldCoordinator = user?.role === "Field Coordinator";
-  const canModify = isSuperAdmin || isDataEnumerator || isFieldCoordinator;
-  const canDelete = isSuperAdmin;
+  const perms = getRolePermissions(user?.role);
+  const isSuperAdmin = perms.isSuperAdmin;
+  const canAdd = perms.canUpload;
+  const canEdit = perms.canEdit;
+  const canModify = canAdd || canEdit;
+  const canDelete = perms.canDelete;
 
   useEffect(() => {
     setPage(1);
