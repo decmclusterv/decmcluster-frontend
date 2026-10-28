@@ -16,7 +16,7 @@ export const FIVEW_COLUMNS = [
   { key: "activity_status", label: "Activity Status", type: "text" },
 
   // Location & Cluster
-  { key: "state_abyei", label: "State / Abyei", type: "text" },
+  { key: "state_abyei", label: "State", type: "text" },
   { key: "admin1_code", label: "Admin1 Code", type: "text" },
   { key: "province", label: "Province", type: "text" },
   { key: "admin2_code", label: "Admin2 Code", type: "text" },
